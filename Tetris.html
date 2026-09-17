@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>俄罗斯方块 Pixel黄金视觉版</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        body {
+            background-color: #121212;
+            color: #fff;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            height: 100vh;
+            margin: 0;
+            padding: env(safe-area-inset-top) 10px env(safe-area-inset-bottom) 10px;
+            overflow: hidden;
+        }
+
+        /* 顶部精简控制台 */
+        .header {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 5px 0 5px;
+            height: 45px;
+        }
+
+        .brand {
+            font-size: 16px;
+            font-weight: 800;
+            letter-spacing: 1px;
+            background: linear-gradient(45deg, #4285F4, #EA4335, #FBBC05, #34A853);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .top-ctrls {
+            display: flex;
+            gap: 10px;
+        }
+
+        .ctrl-icon-btn {
+            background-color: #2a2a2a;
+            color: #fff;
+            border: 1px solid #444;
+            border-radius: 6px;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            cursor: pointer;
+        }
+        .ctrl-icon-btn:active { background-color: #444; }
+        .mute-active { border-color: #EA4335; color: #EA4335; }
+
+        /* 核心舞台：包含左侧预测、中间画布、右侧计分 */
+        .touch-zone {
+            position: relative;
+            flex-grow: 1;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            touch-action: none; 
+            margin-bottom: 5px;
+        }
+
+        .game-layout {
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            height: 100%;
+            max-height: 72vh;
+            position: relative;
+            width: 100%;
+        }
+
+        /* 右侧独立数据面板 */
+        .right-status-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            width: 52px;
+            margin-left: 8px;
+            margin-top: 40px; /* 偏上对齐 */
+        }
+
+        .box {
+            background-color: #1e1e1e;
+            padding: 5px 4px;
+            border-radius: 6px;
+            text-align: center;
+            border: 1px solid #2d2d2d;
+        }
+        .box-label { font-size: 8px; color: #777; margin-bottom: 2px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;}
+        .box-val { font-size: 12px; font-weight: bold; }
+        #playerNameDisplay { color: #4285F4; }
+
+        /* 左侧独立3块方块预测舱 */
+        .left-preview-pod {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 52px;
+            margin-right: 8px;
+            margin-top: 40px; 
+            background-color: rgba(30, 30, 30, 0.6);
+            border: 1px solid rgba(45, 45, 45, 0.8);
+            border-radius: 8px;
+            padding: 6px 0;
+        }
+        .pod-label {
+            font-size: 8px;
+            color: #888;
+            margin-bottom: 6px;
+            font-weight: bold;
+            letter-spacing: 0.5px;
+        }
+        #previewCanvas {
+            background-color: transparent;
+        }
+
+        /* 主画布容器 */
+        .canvas-container {
+            position: relative;
+            height: 100%;
+            aspect-ratio: 1 / 2;
+        }
+
+        #gameCanvas {
+            background-color: #000;
+            border: 3px solid #333;
+            border-radius: 8px;
+            width: 100%;
+            height: 100%;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+        }
+
+        /* 统一弹窗拦截层 */
+        .pause-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.95);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            z-index: 10;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.15s ease;
+            padding: 15px;
+        }
+
+        .pause-overlay.show { opacity: 1; pointer-events: auto; }
+        .pause-text { font-size: 22px; font-weight: bold; color: #FBBC05; letter-spacing: 2px; margin-bottom: 12px; }
+
+        /* 英雄榜表格样式 */
+        .leaderboard-title { font-size: 14px; color: #4285F4; margin-bottom: 6px; font-weight: bold; }
+        .leaderboard-table { width: 100%; max-width: 220px; border-collapse: collapse; font-size: 11px; margin-bottom: 15px; color: #ccc; }
+        .leaderboard-table th, .leaderboard-table td { padding: 4px 5px; text-align: left; }
+        .leaderboard-table th { border-bottom: 1px solid #444; color: #888; }
+        .leaderboard-table tr.highlight-row { color: #FBBC05; font-weight: bold; background-color: rgba(251, 188, 5, 0.1); }
+
+        .resume-hint-btn {
+            background: #4285F4; border: none; color: white; padding: 8px 22px; font-size: 12px; border-radius: 20px; font-weight: bold;
+        }
+
+        /* 开局新手引导遮罩样式 */
+        .guide-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(10, 10, 10, 0.9);
+            border-radius: 8px;
+            z-index: 15;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+        }
+        .guide-overlay.show { opacity: 1; pointer-events: auto; }
+        .guide-title { color: #4285F4; font-size: 18px; font-weight: bold; margin-bottom: 20px; }
+        .guide-item { display: flex; align-items: center; width: 100%; max-width: 200px; margin-bottom: 15px; }
+        .guide-icon { font-size: 20px; width: 35px; text-align: center; margin-right: 12px; }
+        .guide-desc { font-size: 12px; color: #ddd; line-height: 1.3; }
+        .guide-desc b { color: #FBBC05; }
+        .start-action-hint { margin-top: 25px; font-size: 11px; color: #666; animation: breathe 1.5s infinite ease-in-out; }
+
+        @keyframes breathe { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
+        .bottom-nav-text { font-size: 10px; color: #444; text-align: center; margin-bottom: 8px; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div class="brand">TETRIS</div>
+        <div class="top-ctrls">
+            <div class="ctrl-icon-btn" id="btn-sound">🎵</div>
+            <div class="ctrl-icon-btn" id="btn-pause">⏸</div>
+        </div>
+    </div>
+
+    <div class="touch-zone" id="touchZone">
+        <div class="game-layout">
+            
+            <div class="left-preview-pod">
+                <div class="pod-label">NEXT</div>
+                <canvas id="previewCanvas" width="46" height="140"></canvas>
+            </div>
+
+            <div class="canvas-container">
+                <canvas id="gameCanvas" width="300" height="600"></canvas>
+                
+                <div id="pauseOverlay" class="pause-overlay">
+                    <div class="pause-text" id="overlayTitle">游戏暂停</div>
+                    <div class="leaderboard-title">🏆 前十名英雄榜</div>
+                    <table class="leaderboard-table">
+                        <thead>
+                            <tr><th width="20%">#</th><th width="50%">玩家</th><th width="30%">得分</th></tr>
+                        </thead>
+                        <tbody id="leaderboardBody"></tbody>
+                    </table>
+                    <button class="resume-hint-btn" id="btn-resume">继续游戏</button>
+                </div>
+
+                <div id="guideOverlay" class="guide-overlay">
+                    <div class="guide-title">🎮 丝滑手势指南</div>
+                    <div class="guide-item">
+                        <div class="guide-icon">↔️</div>
+                        <div class="guide-desc">左右<b>微幅拖拽</b><br>横向平移方块</div>
+                    </div>
+                    <div class="guide-item">
+                        <div class="guide-icon">👇</div>
+                        <div class="guide-desc">轻度<b>向下缓滑</b><br>方块加速下落</div>
+                    </div>
+                    <div class="guide-item">
+                        <div class="guide-icon">🚀</div>
+                        <div class="guide-desc">大幅<b>猛力下划</b><br>方块直落固定</div>
+                    </div>
+                    <div class="guide-item">
+                        <div class="guide-icon">🔘</div>
+                        <div class="guide-desc">轻触<b>屏幕任意处</b><br>顺时针旋转</div>
+                    </div>
+                    <div class="start-action-hint">— 点击屏幕任意位置开玩 —</div>
+                </div>
+            </div>
+
+            <div class="right-status-panel">
+                <div class="box">
+                    <div class="box-label" id="playerNameDisplay">PLAYER</div>
+                    <div id="level" class="box-val">1</div>
+                </div>
+                <div class="box">
+                    <div class="box-label">SCORE</div>
+                    <div id="score" class="box-val">0</div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <div class="bottom-nav-text">Pixel Gestures Pro v1.6</div>
+
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const previewCanvas = document.getElementById('previewCanvas');
+    const pCtx = previewCanvas.getContext('2d');
+    const touchZone = document.getElementById('touchZone');
+    const pauseOverlay = document.getElementById('pauseOverlay');
+    const guideOverlay = document.getElementById('guideOverlay');
+    const overlayTitle = document.getElementById('overlayTitle');
+    const leaderboardBody = document.getElementById('leaderboardBody');
+    const btnPause = document.getElementById('btn-pause');
+    const btnResume = document.getElementById('btn-resume');
+    const btnSound = document.getElementById('btn-sound');
+
+    const ROW = 20;
+    const COL = 10;
+    const BLOCK_SIZE = 30;
+
+    const COLORS = [null, '#4285F4', '#EA4335', '#FBBC05', '#34A853', '#a000f0', '#f0a000', '#00f0f0'];
+    const SHAPES = [
+        [],
+        [[0,0,0,0],[1,1,1,1],[0,0,0,0],[0,0,0,0]], // I
+        [[2,2],[2,2]],                             // O
+        [[0,3,0],[3,3,3],[0,0,0]],                 // T
+        [[0,4,4],[4,4,0],[0,0,0]],                 // S
+        [[5,5,0],[0,5,5],[0,0,0]],                 // Z
+        [[6,0,0],[6,6,6],[0,0,0]],                 // J
+        [[0,0,7],[7,7,7],[0,0,0]]                  // L
+    ];
+
+    let board = Array.from({length: ROW}, () => Array(COL).fill(0));
+    let score = 0;
+    let level = 1;
+    let linesClearedTotal = 0;
+    let gameOver = false;
+    let isPaused = false; 
+    let inTutorial = false; 
+    let soundEnabled = true; 
+    let playerName = "";
+
+    let baseSpeed = 1000; 
+    let dropCounter = 0;
+    let lastTime = 0;
+
+    let currentPiece = { matrix: null, x: 0, y: 0 };
+    let pieceQueue = [];
+
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let lastGridX = 0; 
+    let lastGridY = 0; 
+    let isSwipeAction = false; 
+    
+    // 🔒 连落防御核心双锁机制
+    let hasHardDroppedThisTouch = false; 
+    let lastHardDropTime = 0; // 高频时间戳盾牌
+
+    const SWIPE_THRESHOLD_X = 22; 
+    const SWIPE_THRESHOLD_Y = 18; 
+    const HARD_DROP_MIN_PIXELS = 80; 
+    const HARD_DROP_COOLDOWN = 120; // 120毫秒物理冷却锁，彻底屏蔽高速揉搓产生的电信号噪音
+
+    // --- 智能起名系统 ---
+    function askPlayerName() {
+        let nameInput = prompt("请输入您的尊姓大名（冲击前10名英雄榜）：", "");
+        if (nameInput === null || nameInput.trim() === "") {
+            const coolPrefix = ["Pixel", "Retro", "Cyber", "Nexus", "Alpha", "Droid", "Gamer"];
+            const randomId = Math.floor(100 + Math.random() * 900);
+            playerName = coolPrefix[Math.floor(Math.random() * coolPrefix.length)] + "_" + randomId;
+        } else {
+            playerName = nameInput.trim().substring(0, 8);
+        }
+        document.getElementById('playerNameDisplay').innerText = playerName.toUpperCase();
+        showTutorial();
+    }
+
+    function showTutorial() {
+        inTutorial = true;
+        guideOverlay.classList.add('show');
+    }
+
+    function closeTutorial() {
+        inTutorial = false;
+        guideOverlay.classList.remove('show');
+        lastTime = performance.now(); 
+        requestAnimationFrame(update);
+    }
+
+    // --- 排行榜逻辑 ---
+    function getLeaderboard() {
+        let data = localStorage.getItem('pixel_tetris_ranks');
+        return data ? JSON.parse(data) : [];
+    }
+
+    function saveScore(name, finalScore) {
+        let list = getLeaderboard();
+        list.push({ name: name, score: finalScore, date: new Date().toLocaleDateString() });
+        list.sort((a, b) => b.score - a.score);
+        list = list.slice(0, 10);
+        localStorage.setItem('pixel_tetris_ranks', JSON.stringify(list));
+    }
+
+    function renderLeaderboard(highlightScore = -1) {
+        const list = getLeaderboard();
+        leaderboardBody.innerHTML = "";
+        for (let i = 0; i < 10; i++) {
+            const tr = document.createElement('tr');
+            if (list[i]) {
+                if (list[i].score === highlightScore && list[i].name === playerName) {
+                    tr.className = "highlight-row";
+                }
+                tr.innerHTML = `<td>${i+1}</td><td>${list[i].name}</td><td>${list[i].score}</td>`;
+            } else {
+                tr.innerHTML = `<td>${i+1}</td><td style="color:#444">虚位以待</td><td style="color:#444">-</td>`;
+            }
+            leaderboardBody.appendChild(tr);
+        }
+    }
+
+    // --- 音效引擎 ---
+    let audioCtx = null;
+    function initAudio() {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+
+    function playSound(type) {
+        if (!soundEnabled) return;
+        try {
+            initAudio();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            const now = audioCtx.currentTime;
+
+            if (type === 'rotate') {
+                osc.type = 'triangle'; osc.frequency.setValueAtTime(300, now);
+                osc.frequency.exponentialRampToValueAtTime(600, now + 0.08);
+                gain.gain.setValueAtTime(0.15, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+                osc.start(now); osc.stop(now + 0.08);
+            } else if (type === 'drop') {
+                osc.type = 'sawtooth'; osc.frequency.setValueAtTime(120, now);
+                osc.frequency.linearRampToValueAtTime(40, now + 0.12);
+                gain.gain.setValueAtTime(0.2, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.12);
+                osc.start(now); osc.stop(now + 0.12);
+            } else if (type === 'clear') {
+                osc.type = 'square'; osc.frequency.setValueAtTime(523.25, now); osc.frequency.setValueAtTime(659.25, now + 0.08);
+                gain.gain.setValueAtTime(0.15, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+                osc.start(now); osc.stop(now + 0.25);
+            } else if (type === 'tetris') {
+                osc.type = 'square'; osc.frequency.setValueAtTime(523.25, now); osc.frequency.setValueAtTime(659.25, now + 0.06);
+                osc.frequency.setValueAtTime(783.99, now + 0.12); osc.frequency.setValueAtTime(1046.50, now + 0.18);
+                gain.gain.setValueAtTime(0.2, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+                osc.start(now); osc.stop(now + 0.4);
+            }
+        } catch (e) {}
+    }
+
+    btnSound.addEventListener('click', (e) => {
+        e.stopPropagation();
+        soundEnabled = !soundEnabled;
+        if (soundEnabled) { btnSound.innerText = "🎵"; btnSound.classList.remove('mute-active'); initAudio(); }
+        else { btnSound.innerText = "🔇"; btnSound.classList.add('mute-active'); }
+    });
+
+    function initQueue() {
+        while(pieceQueue.length < 5) { pieceQueue.push(createRandomPiece()); }
+    }
+
+    function createRandomPiece() {
+        const id = Math.floor(Math.random() * 7) + 1;
+        return { id: id, matrix: JSON.parse(JSON.stringify(SHAPES[id])) };
+    }
+
+    function spawnPiece() {
+        initQueue();
+        const next = pieceQueue.shift();
+        currentPiece.matrix = next.matrix;
+        currentPiece.y = next.id === 1 ? -1 : 0;
+        currentPiece.x = Math.floor((COL - currentPiece.matrix[0].length) / 2);
+
+        if (collide(board, currentPiece)) {
+            gameOver = true;
+            saveScore(playerName, score);
+            overlayTitle.innerText = "👑 游戏结束";
+            overlayTitle.style.color = "#EA4335";
+            btnResume.innerText = "再来一局";
+            renderLeaderboard(score);
+            pauseOverlay.classList.add('show');
+        }
+        initQueue();
+    }
+
+    function resetGame() {
+        board = Array.from({length: ROW}, () => Array(COL).fill(0));
+        score = 0; level = 1; linesClearedTotal = 0; baseSpeed = 1000; isPaused = false;
+        pauseOverlay.classList.remove('show');
+        document.getElementById('score').innerText = score;
+        document.getElementById('level').innerText = level;
+        gameOver = false;
+        pieceQueue = [];
+        initQueue();
+        askPlayerName(); 
+        spawnPiece();
+    }
+
+    function drawBlock(context, x, y, colorIndex) {
+        context.fillStyle = COLORS[colorIndex];
+        context.fillRect(x * BLOCK_SIZE, y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+        context.strokeStyle = '#121212';
+        context.lineWidth = 2;
+        context.strokeRect(x * BLOCK_SIZE, y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+    }
+
+    function draw() {
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        ctx.strokeStyle = '#161616'; ctx.lineWidth = 1;
+        for (let c = 1; c < COL; c++) { ctx.beginPath(); ctx.moveTo(c * BLOCK_SIZE, 0); ctx.lineTo(c * BLOCK_SIZE, canvas.height); ctx.stroke(); }
+        for (let r = 1; r < ROW; r++) { ctx.beginPath(); ctx.moveTo(0, r * BLOCK_SIZE); ctx.lineTo(canvas.width, r * BLOCK_SIZE); ctx.stroke(); }
+
+        for(let r=0; r<ROW; r++) {
+            for(let c=0; c<COL; c++) { if(board[r][c] > 0) drawBlock(ctx, c, r, board[r][c]); }
+        }
+
+        if(currentPiece.matrix) {
+            currentPiece.matrix.forEach((row, rIndex) => {
+                row.forEach((value, cIndex) => { if(value > 0) drawBlock(ctx, currentPiece.x + cIndex, currentPiece.y + rIndex, value); });
+            });
+        }
+        drawPreview();
+    }
+
+    // --- 纵向渲染3块预测方块 ---
+    function drawPreview() {
+        pCtx.fillStyle = '#000'; 
+        pCtx.fillRect(0, 0, previewCanvas.width, previewCanvas.height);
+        const pSize = 8; 
+
+        for (let i = 0; i < 3; i++) {
+            const piece = pieceQueue[i];
+            if (!piece) continue;
+            const matrix = piece.matrix;
+            
+            const offsetX = (previewCanvas.width - matrix[0].length * pSize) / 2;
+            const offsetY = 4 + i * 44; 
+
+            matrix.forEach((row, rIndex) => {
+                row.forEach((value, cIndex) => {
+                    if (value > 0) {
+                        pCtx.fillStyle = COLORS[value]; 
+                        pCtx.fillRect(offsetX + cIndex * pSize, offsetY + rIndex * pSize, pSize, pSize);
+                        pCtx.strokeStyle = '#000'; 
+                        pCtx.strokeRect(offsetX + cIndex * pSize, offsetY + rIndex * pSize, pSize, pSize);
+                    }
+                });
+            });
+        }
+    }
+
+    function collide(board, piece) {
+        const m = piece.matrix; const o = piece;
+        for (let r = 0; r < m.length; ++r) {
+            for (let c = 0; c < m[r].length; ++c) { if (m[r][c] !== 0 && (board[r + o.y] && board[r + o.y][c + o.x]) !== 0) return true; }
+        }
+        return false;
+    }
+
+    function merge(board, piece) {
+        piece.matrix.forEach((row, r) => {
+            row.forEach((value, c) => { if (value !== 0) board[r + piece.y][c + piece.x] = value; });
+        });
+    }
+
+    function arenaSweep() {
+        let rowsClearedInTurn = 0;
+        outer: for (let r = ROW - 1; r >= 0; --r) {
+            for (let c = 0; c < COL; ++c) { if (board[r][c] === 0) continue outer; }
+            const row = board.splice(r, 1)[0].fill(0);
+            board.unshift(row); ++r; rowsClearedInTurn++;
+        }
+
+        if (rowsClearedInTurn > 0) {
+            score += rowsClearedInTurn * 10 * level; linesClearedTotal += rowsClearedInTurn;
+            document.getElementById('score').innerText = score;
+            if (rowsClearedInTurn === 4) playSound('tetris'); else playSound('clear');
+
+            let newLevel = Math.floor(linesClearedTotal / 10) + 1;
+            if (newLevel !== level) {
+                level = newLevel; document.getElementById('level').innerText = level;
+                baseSpeed = Math.max(80, 1000 - (level - 1) * 95); 
+            }
+        }
+    }
+
+    function playerDrop() {
+        currentPiece.y++;
+        if (collide(board, currentPiece)) { currentPiece.y--; merge(board, currentPiece); arenaSweep(); spawnPiece(); }
+        dropCounter = 0;
+    }
+
+    function playerHardDrop() {
+        while (!collide(board, currentPiece)) { currentPiece.y++; }
+        currentPiece.y--; merge(board, currentPiece); playSound('drop'); arenaSweep(); spawnPiece(); 
+        
+        // 🔒 双保险：直落触发时，不仅重置下落计数，同时刷新时间盾牌
+        dropCounter = 0;
+        lastHardDropTime = performance.now(); 
+    }
+
+    function playerMove(dir) {
+        currentPiece.x += dir; if (collide(board, currentPiece)) currentPiece.x -= dir;
+    }
+
+    function rotate(matrix) {
+        for (let r = 0; r < matrix.length; ++r) {
+            for (let c = 0; c < r; ++c) { [matrix[c][r], matrix[r][c]] = [matrix[r][c], matrix[c][r]]; }
+        }
+        matrix.forEach(row => row.reverse());
+    }
+
+    function playerRotate() {
+        const pos = currentPiece.x; let offset = 1; rotate(currentPiece.matrix);
+        while (collide(board, currentPiece)) {
+            currentPiece.x += offset; offset = -(offset + (offset > 0 ? 1 : -1));
+            if (offset > currentPiece.matrix[0].length) { rotate(currentPiece.matrix); currentPiece.x = pos; return; }
+        }
+        playSound('rotate');
+    }
+
+    function togglePause() {
+        if (gameOver) { resetGame(); return; }
+        if (inTutorial) return; 
+        isPaused = !isPaused;
+        if (isPaused) {
+            overlayTitle.innerText = "游戏暂停";
+            overlayTitle.style.color = "#FBBC05";
+            btnResume.innerText = "继续游戏";
+            renderLeaderboard();
+            pauseOverlay.classList.add('show');
+        } else {
+            pauseOverlay.classList.remove('show');
+            lastTime = performance.now(); requestAnimationFrame(update);
+        }
+    }
+
+    btnPause.addEventListener('click', (e) => { e.stopPropagation(); togglePause(); });
+    btnResume.addEventListener('click', (e) => { e.stopPropagation(); togglePause(); });
+
+    // 手势核心拦截器
+    touchZone.addEventListener('touchstart', (e) => {
+        if (gameOver || isPaused) return;
+        initAudio();
+        
+        if (inTutorial) {
+            e.stopPropagation();
+            closeTutorial();
+            return;
+        }
+
+        const touch = e.touches[0];
+        touchStartX = touch.clientX; touchStartY = touch.clientY;
+        lastGridX = 0; lastGridY = 0; isSwipeAction = false; 
+        
+        // 每次手指接触屏幕一瞬间，无条件解锁硬直落功能
+        hasHardDroppedThisTouch = false;
+    }, { passive: false });
+
+    touchZone.addEventListener('touchmove', (e) => {
+        if (gameOver || isPaused || inTutorial) return;
+
+        // 🔒 【高密度超频盾牌拦截】
+        // 判定一：如果本次单手触摸已经触发过硬直落，直接物理丢弃。
+        // 判定二：如果当前系统时间距离上一次成功执行硬直落不足 HARD_DROP_COOLDOWN (120ms)，直接彻底拦截！
+        if (hasHardDroppedThisTouch || (performance.now() - lastHardDropTime < HARD_DROP_COOLDOWN)) {
+            return;
+        }
+        
+        const touch = e.touches[0];
+        const deltaX = touch.clientX - touchStartX; const deltaY = touch.clientY - touchStartY;
+
+        // 大幅猛力下划检测
+        if (deltaY > HARD_DROP_MIN_PIXELS && Math.abs(deltaY) > Math.abs(deltaX) * 1.5) {
+            isSwipeAction = true; 
+            hasHardDroppedThisTouch = true; // 锁定单次触摸权限
+            playerHardDrop(); 
+            return;
+        }
+
+        const currentGridX = Math.trunc(deltaX / SWIPE_THRESHOLD_X);
+        const currentGridY = Math.trunc(deltaY / SWIPE_THRESHOLD_Y);
+
+        if (Math.abs(currentGridX) > Math.abs(lastGridX)) {
+            isSwipeAction = true; playerMove(currentGridX > lastGridX ? 1 : -1); lastGridX = currentGridX;
+        }
+        if (currentGridY > lastGridY && deltaY > 0) {
+            isSwipeAction = true; playerDrop(); lastGridY = currentGridY;
+        }
+    }, { passive: true });
+
+    touchZone.addEventListener('touchend', (e) => {
+        if (isPaused || gameOver || inTutorial) return;
+        if (!isSwipeAction) playerRotate();
+    }, { passive: true });
+
+    function update(time = 0) {
+        if (gameOver || isPaused || inTutorial) return;
+        const deltaTime = time - lastTime; lastTime = time;
+        dropCounter += deltaTime;
+        if (dropCounter > baseSpeed) playerDrop();
+        draw();
+        requestAnimationFrame(update);
+    }
+
+    // 初始化运行
+    initQueue();
+    askPlayerName(); 
+    spawnPiece();
+    draw(); 
+</script>
+</body>
+</html>

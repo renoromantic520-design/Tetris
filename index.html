@@ -252,6 +252,46 @@
         .start-action-hint { margin-top: 25px; font-size: 11px; color: #666; animation: breathe 1.5s infinite ease-in-out; }
 
         @keyframes breathe { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
+
+        /* ===== 消行反馈动画 ===== */
+        .line-clear-fx {
+            position: absolute; inset: 0; z-index: 8; pointer-events: none;
+            display: flex; align-items: center; justify-content: center;
+            opacity: 0;
+        }
+        .line-clear-fx.show { animation: clearFlash 0.48s ease-out forwards; }
+        .clear-burst {
+            position: absolute; width: 70%; height: 24%; border-radius: 50%;
+            border: 3px solid rgba(255,255,255,.9);
+            box-shadow: 0 0 18px rgba(255,255,255,.8), 0 0 45px rgba(66,133,244,.7);
+            opacity: 0;
+        }
+        .line-clear-fx.show .clear-burst { animation: burst 0.48s ease-out forwards; }
+        .clear-text {
+            position: relative; z-index: 2; font-weight: 900; font-style: italic;
+            font-size: clamp(22px, 9vw, 42px); letter-spacing: 2px;
+            text-shadow: 0 0 8px #fff, 0 0 22px currentColor;
+            transform: scale(.45) rotate(-4deg); opacity: 0;
+        }
+        .line-clear-fx.show .clear-text { animation: clearText .48s cubic-bezier(.2,1.5,.4,1) forwards; }
+        .line-clear-fx.one .clear-text { color:#fff; }
+        .line-clear-fx.two .clear-text { color:#FBBC05; }
+        .line-clear-fx.three .clear-text { color:#34A853; }
+        .line-clear-fx.four .clear-text { color:#fff; font-size:clamp(28px,11vw,50px); }
+        .line-clear-fx.four .clear-burst { box-shadow:0 0 20px #fff,0 0 55px #FBBC05,0 0 90px #EA4335; border-width:4px; }
+        @keyframes clearFlash { 0%{opacity:0;background:rgba(255,255,255,0)} 12%{opacity:1;background:rgba(255,255,255,.16)} 100%{opacity:0;background:rgba(255,255,255,0)} }
+        @keyframes burst { 0%{transform:scale(.2);opacity:.9} 100%{transform:scale(1.45);opacity:0} }
+        @keyframes clearText { 0%{transform:scale(.45) rotate(-4deg);opacity:0} 25%{transform:scale(1.12) rotate(2deg);opacity:1} 100%{transform:scale(1) rotate(0);opacity:0} }
+        .score-pop {
+            position:absolute; right:4px; top:10px; z-index:9; pointer-events:none;
+            font-size:14px; font-weight:900; color:#FBBC05; opacity:0;
+            text-shadow:0 0 8px currentColor;
+        }
+        .score-pop.show { animation: scorePop .7s ease-out forwards; }
+        @keyframes scorePop { 0%{opacity:0;transform:translateY(8px) scale(.7)} 20%{opacity:1;transform:translateY(0) scale(1.15)} 100%{opacity:0;transform:translateY(-28px) scale(1)} }
+        #gameCanvas.line-shake { animation: boardShake .22s ease-out; }
+        @keyframes boardShake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-3px)} 50%{transform:translateX(3px)} 75%{transform:translateX(-2px)} }
+
         .bottom-nav-text {
             display: none;
         }
@@ -293,6 +333,12 @@
 
             <div class="canvas-container">
                 <canvas id="gameCanvas" width="300" height="600"></canvas>
+        <div class="line-clear-fx" id="lineClearFx" aria-hidden="true">
+            <div class="clear-burst"></div>
+            <div class="clear-text" id="clearText">SINGLE!</div>
+        </div>
+        <div class="score-pop" id="scorePop">+100</div>
+
                 
                 <div id="pauseOverlay" class="pause-overlay">
                     <div class="pause-text" id="overlayTitle">游戏暂停</div>
@@ -357,6 +403,9 @@
     const btnPause = document.getElementById('btn-pause');
     const btnResume = document.getElementById('btn-resume');
     const btnSound = document.getElementById('btn-sound');
+    const lineClearFx = document.getElementById('lineClearFx');
+    const clearText = document.getElementById('clearText');
+    const scorePop = document.getElementById('scorePop');
 
     const ROW = 20;
     const COL = 10;
@@ -491,15 +540,18 @@
                 osc.frequency.linearRampToValueAtTime(40, now + 0.12);
                 gain.gain.setValueAtTime(0.2, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.12);
                 osc.start(now); osc.stop(now + 0.12);
-            } else if (type === 'clear') {
-                osc.type = 'square'; osc.frequency.setValueAtTime(523.25, now); osc.frequency.setValueAtTime(659.25, now + 0.08);
-                gain.gain.setValueAtTime(0.15, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
-                osc.start(now); osc.stop(now + 0.25);
+            } else if (type === 'single') {
+                osc.type='square'; osc.frequency.setValueAtTime(440,now); osc.frequency.setValueAtTime(660,now+.10);
+                gain.gain.setValueAtTime(.14,now); gain.gain.exponentialRampToValueAtTime(.01,now+.22); osc.start(now); osc.stop(now+.22);
+            } else if (type === 'double') {
+                osc.type='triangle'; osc.frequency.setValueAtTime(392,now); osc.frequency.setValueAtTime(523.25,now+.09); osc.frequency.setValueAtTime(659.25,now+.18);
+                gain.gain.setValueAtTime(.16,now); gain.gain.exponentialRampToValueAtTime(.01,now+.30); osc.start(now); osc.stop(now+.30);
+            } else if (type === 'triple') {
+                osc.type='square'; [523.25,659.25,783.99,1046.5].forEach((f,i)=>osc.frequency.setValueAtTime(f,now+i*.075));
+                gain.gain.setValueAtTime(.17,now); gain.gain.exponentialRampToValueAtTime(.01,now+.36); osc.start(now); osc.stop(now+.36);
             } else if (type === 'tetris') {
-                osc.type = 'square'; osc.frequency.setValueAtTime(523.25, now); osc.frequency.setValueAtTime(659.25, now + 0.06);
-                osc.frequency.setValueAtTime(783.99, now + 0.12); osc.frequency.setValueAtTime(1046.50, now + 0.18);
-                gain.gain.setValueAtTime(0.2, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
-                osc.start(now); osc.stop(now + 0.4);
+                osc.type='square'; [392,523.25,659.25,783.99,1046.5,1318.5].forEach((f,i)=>osc.frequency.setValueAtTime(f,now+i*.065));
+                gain.gain.setValueAtTime(.20,now); gain.gain.exponentialRampToValueAtTime(.01,now+.48); osc.start(now); osc.stop(now+.48);
             }
         } catch (e) {}
     }
@@ -644,6 +696,18 @@
         });
     }
 
+    function showLineClearEffect(lines, gained) {
+        const names = {1:'SINGLE!',2:'DOUBLE!',3:'TRIPLE!',4:'TETRIS!'};
+        lineClearFx.className = 'line-clear-fx ' + ['','one','two','three','four'][lines];
+        clearText.textContent = names[lines] || 'CLEAR!';
+        scorePop.textContent = '+' + gained;
+        lineClearFx.classList.remove('show'); scorePop.classList.remove('show');
+        void lineClearFx.offsetWidth; void scorePop.offsetWidth;
+        lineClearFx.classList.add('show'); scorePop.classList.add('show');
+        canvas.classList.remove('line-shake'); void canvas.offsetWidth; canvas.classList.add('line-shake');
+        setTimeout(() => lineClearFx.classList.remove('show'), 520);
+    }
+
     function arenaSweep() {
         let rowsClearedInTurn = 0;
         outer: for (let r = ROW - 1; r >= 0; --r) {
@@ -653,9 +717,11 @@
         }
 
         if (rowsClearedInTurn > 0) {
-            score += rowsClearedInTurn * 10 * level; linesClearedTotal += rowsClearedInTurn;
+            const lineScore = [0, 100, 300, 500, 800][rowsClearedInTurn] * level;
+            score += lineScore; linesClearedTotal += rowsClearedInTurn;
             document.getElementById('score').innerText = score;
-            if (rowsClearedInTurn === 4) playSound('tetris'); else playSound('clear');
+            showLineClearEffect(rowsClearedInTurn, lineScore);
+            playSound(['','single','double','triple','tetris'][rowsClearedInTurn]);
 
             let newLevel = Math.floor(linesClearedTotal / 10) + 1;
             if (newLevel !== level) {

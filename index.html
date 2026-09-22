@@ -6,7 +6,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#121212">
-    <title>俄罗斯方块 Pixel黄金视觉版 - 硬降防漂移修正版</title>
+    <title>俄罗斯方块 Pixel黄金视觉版</title>
     <style>
         * {
             box-sizing: border-box;
@@ -253,34 +253,6 @@
 
         @keyframes breathe { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
 
-        /* ===== 消行反馈动画：强化版 ===== */
-        .line-clear-fx{position:absolute;inset:0;z-index:20;pointer-events:none;display:flex;align-items:center;justify-content:center;overflow:hidden;opacity:0}
-        .line-clear-fx.show{animation:megaFlash .72s ease-out forwards}
-        .clear-burst{position:absolute;width:18%;height:10%;border-radius:50%;border:3px solid rgba(255,255,255,.95);opacity:0;box-shadow:0 0 16px #fff,0 0 42px currentColor,0 0 90px currentColor}
-        .line-clear-fx.show .clear-burst{animation:megaBurst .72s cubic-bezier(.12,.8,.2,1) forwards}
-        .clear-ring{position:absolute;width:35%;height:35%;border:2px solid rgba(255,255,255,.9);border-radius:50%;opacity:0}
-        .line-clear-fx.show .clear-ring{animation:ringBlast .72s ease-out forwards}
-        .clear-rays{position:absolute;inset:-30%;opacity:0;background:repeating-conic-gradient(from 0deg,rgba(255,255,255,.9) 0deg 2deg,transparent 2deg 13deg);mix-blend-mode:screen}
-        .line-clear-fx.show .clear-rays{animation:raysBlast .7s ease-out forwards}
-        .clear-text{position:relative;z-index:3;font-weight:1000;font-style:italic;font-size:clamp(27px,11vw,54px);letter-spacing:2px;-webkit-text-stroke:1px rgba(255,255,255,.55);text-shadow:0 0 6px #fff,0 0 18px currentColor,0 0 38px currentColor,0 4px 0 rgba(0,0,0,.8);transform:scale(.15) rotate(-10deg);opacity:0}
-        .line-clear-fx.show .clear-text{animation:megaText .72s cubic-bezier(.12,1.55,.28,1) forwards}
-        .line-clear-fx.one .clear-text{color:#fff}.line-clear-fx.two .clear-text{color:#ffd43b}.line-clear-fx.three .clear-text{color:#5ee7ff}.line-clear-fx.four .clear-text{color:#fff;font-size:clamp(32px,13vw,62px)}
-        .line-clear-fx.four .clear-burst{border-width:5px;box-shadow:0 0 20px #fff,0 0 60px #ffd43b,0 0 120px #ff4d6d}
-        .line-clear-fx.four .clear-rays{background:repeating-conic-gradient(from 0deg,rgba(255,255,255,.95) 0deg 3deg,transparent 3deg 11deg)}
-        .fx-particle{position:absolute;left:50%;top:50%;width:5px;height:18px;border-radius:3px;opacity:0;box-shadow:0 0 8px currentColor;transform-origin:50% 0}
-        .line-clear-fx.show .fx-particle{animation:particleBlast .72s cubic-bezier(.12,.8,.2,1) forwards}
-        .score-pop{position:absolute;right:4px;top:10px;z-index:21;pointer-events:none;font-size:16px;font-weight:1000;color:#ffd43b;opacity:0;text-shadow:0 0 8px #fff,0 0 18px currentColor}
-        .score-pop.show{animation:scoreMega .85s cubic-bezier(.1,1.3,.3,1) forwards}
-        @keyframes megaFlash{0%{opacity:0;background:rgba(255,255,255,0)}8%{opacity:1;background:rgba(255,255,255,.55)}18%{opacity:.9;background:rgba(255,220,80,.18)}35%{opacity:.45;background:rgba(255,255,255,.08)}100%{opacity:0;background:transparent}}
-        @keyframes megaBurst{0%{transform:scale(.05);opacity:1}35%{transform:scale(1.2);opacity:1}100%{transform:scale(3.1);opacity:0}}
-        @keyframes ringBlast{0%{transform:scale(.1);opacity:0}18%{opacity:1}100%{transform:scale(4.8);opacity:0}}
-        @keyframes raysBlast{0%{transform:scale(.4) rotate(0deg);opacity:0}12%{opacity:.95}100%{transform:scale(1.35) rotate(28deg);opacity:0}}
-        @keyframes megaText{0%{transform:scale(.15) rotate(-10deg);opacity:0}18%{transform:scale(1.28) rotate(4deg);opacity:1}34%{transform:scale(.94) rotate(-1deg);opacity:1}52%{transform:scale(1.06) rotate(0);opacity:1}100%{transform:scale(1.25);opacity:0}}
-        @keyframes particleBlast{0%{transform:rotate(var(--a)) translateY(0) scale(.4);opacity:1}72%{opacity:1}100%{transform:rotate(var(--a)) translateY(var(--d)) scale(.15);opacity:0}}
-        @keyframes scoreMega{0%{opacity:0;transform:translateY(12px) scale(.5) rotate(-8deg)}18%{opacity:1;transform:translateY(-2px) scale(1.35) rotate(3deg)}45%{transform:translateY(-8px) scale(1.05)}100%{opacity:0;transform:translateY(-52px) scale(1.25)}}
-        #gameCanvas.line-shake{animation:boardShake .34s ease-out}
-        @keyframes boardShake{0%,100%{transform:translate(0)}12%{transform:translate(-5px,2px)}24%{transform:translate(5px,-2px)}36%{transform:translate(-4px,-1px)}48%{transform:translate(4px,1px)}60%{transform:translate(-2px,0)}80%{transform:translate(1px,0)}}
-</style>
         /* ===== 消行反馈动画 ===== */
         .line-clear-fx {
             position: absolute; inset: 0; z-index: 8; pointer-events: none;
@@ -353,7 +325,7 @@
 
     <div class="touch-zone" id="touchZone">
         <div class="game-layout">
-
+            
             <div class="left-preview-pod">
                 <div class="pod-label">NEXT</div>
                 <canvas id="previewCanvas" width="46" height="140"></canvas>
@@ -367,7 +339,7 @@
         </div>
         <div class="score-pop" id="scorePop">+100</div>
 
-
+                
                 <div id="pauseOverlay" class="pause-overlay">
                     <div class="pause-text" id="overlayTitle">游戏暂停</div>
                     <div class="leaderboard-title">🏆 前十名英雄榜</div>
@@ -434,7 +406,6 @@
     const lineClearFx = document.getElementById('lineClearFx');
     const clearText = document.getElementById('clearText');
     const scorePop = document.getElementById('scorePop');
-    const fxParticles = document.getElementById('fxParticles');
 
     const ROW = 20;
     const COL = 10;
@@ -474,9 +445,7 @@
     let lastGridX = 0; 
     let lastGridY = 0; 
     let isSwipeAction = false; 
-    let verticalSwipeLocked = false; // 下滑手势一旦确认，锁住横向输入，避免硬降前发生左右漂移
-
-
+    
     // 🔒 连落防御核心双锁机制
     let hasHardDroppedThisTouch = false; 
     let lastHardDropTime = 0;
@@ -554,17 +523,6 @@
     function playSound(type) {
         if (!soundEnabled) return;
         try {
-            initAudio(); if (audioCtx.state === 'suspended') audioCtx.resume();
-            const now=audioCtx.currentTime;
-            const profiles={single:{notes:[523.25,783.99],dur:.32,vol:.20},double:{notes:[392,523.25,783.99],dur:.42,vol:.22},triple:{notes:[392,523.25,659.25,1046.5],dur:.52,vol:.24},tetris:{notes:[261.63,392,523.25,659.25,783.99,1046.5,1318.5,1567.98],dur:.78,vol:.28}};
-            if(profiles[type]){
-                const p=profiles[type], master=audioCtx.createGain(); master.connect(audioCtx.destination);
-                master.gain.setValueAtTime(.0001,now); master.gain.exponentialRampToValueAtTime(p.vol,now+.015); master.gain.exponentialRampToValueAtTime(.0001,now+p.dur);
-                const osc=audioCtx.createOscillator(); osc.type=type==='tetris'?'sawtooth':'square'; osc.connect(master);
-                p.notes.forEach((f,i)=>osc.frequency.setValueAtTime(f,now+i*(p.dur/p.notes.length))); osc.start(now); osc.stop(now+p.dur);
-                const bass=audioCtx.createOscillator(), bg=audioCtx.createGain(); bass.type='sine'; bass.frequency.setValueAtTime(type==='tetris'?110:90,now); bass.frequency.exponentialRampToValueAtTime(42,now+.26); bg.gain.setValueAtTime(.16,now); bg.gain.exponentialRampToValueAtTime(.0001,now+.28); bass.connect(bg); bg.connect(audioCtx.destination); bass.start(now); bass.stop(now+.3);
-                const ch=audioCtx.createOscillator(), cg=audioCtx.createGain(); ch.type='triangle'; ch.frequency.setValueAtTime(p.notes[p.notes.length-1]*2,now+p.dur*.28); ch.frequency.exponentialRampToValueAtTime(p.notes[p.notes.length-1]*3,now+p.dur*.8); cg.gain.setValueAtTime(.0001,now); cg.gain.exponentialRampToValueAtTime(.12,now+p.dur*.32); cg.gain.exponentialRampToValueAtTime(.0001,now+p.dur); ch.connect(cg); cg.connect(audioCtx.destination); ch.start(now); ch.stop(now+p.dur+.02);
-                return;
             initAudio();
             if (audioCtx.state === 'suspended') audioCtx.resume();
             const osc = audioCtx.createOscillator();
@@ -595,10 +553,6 @@
                 osc.type='square'; [392,523.25,659.25,783.99,1046.5,1318.5].forEach((f,i)=>osc.frequency.setValueAtTime(f,now+i*.065));
                 gain.gain.setValueAtTime(.20,now); gain.gain.exponentialRampToValueAtTime(.01,now+.48); osc.start(now); osc.stop(now+.48);
             }
-            const osc=audioCtx.createOscillator(),gain=audioCtx.createGain();osc.connect(gain);gain.connect(audioCtx.destination);
-            if(type==='rotate'){osc.type='triangle';osc.frequency.setValueAtTime(300,now);osc.frequency.exponentialRampToValueAtTime(600,now+.08);gain.gain.setValueAtTime(.15,now);gain.gain.exponentialRampToValueAtTime(.01,now+.08);osc.start(now);osc.stop(now+.08)}
-            else if(type==='drop'){osc.type='sawtooth';osc.frequency.setValueAtTime(120,now);osc.frequency.linearRampToValueAtTime(40,now+.12);gain.gain.setValueAtTime(.2,now);gain.gain.exponentialRampToValueAtTime(.01,now+.12);osc.start(now);osc.stop(now+.12)}
-        } catch(e) {}
         } catch (e) {}
     }
 
@@ -693,7 +647,7 @@
             const piece = pieceQueue[i];
             if (!piece) continue;
             const matrix = piece.matrix;
-
+            
             const offsetX = (previewCanvas.width - matrix[0].length * pSize) / 2;
             const offsetY = 4 + i * 44; 
 
@@ -742,12 +696,6 @@
         });
     }
 
-    function showLineClearEffect(lines,gained){
-        const names={1:'SINGLE!',2:'DOUBLE!',3:'TRIPLE!',4:'TETRIS!'};
-        lineClearFx.className='line-clear-fx '+['','one','two','three','four'][lines]; clearText.textContent=names[lines]||'CLEAR!'; scorePop.textContent='+'+gained;
-        fxParticles.innerHTML=''; const count=lines===4?34:lines===3?26:lines===2?19:12;
-        for(let i=0;i<count;i++){const el=document.createElement('span');el.className='fx-particle';const a=Math.round(360/count*i+(Math.random()*10-5));const d=(lines===4?125:95)+Math.random()*95;el.style.setProperty('--a',a+'deg');el.style.setProperty('--d',d+'px');el.style.color=['#fff','#ffd43b','#5ee7ff','#ff4d6d'][Math.min(lines-1,3)];el.style.width=(3+Math.random()*4)+'px';el.style.height=(10+Math.random()*15)+'px';fxParticles.appendChild(el)}
-        lineClearFx.classList.remove('show');scorePop.classList.remove('show');void lineClearFx.offsetWidth;void scorePop.offsetWidth;lineClearFx.classList.add('show');scorePop.classList.add('show');canvas.classList.remove('line-shake');void canvas.offsetWidth;canvas.classList.add('line-shake');setTimeout(()=>lineClearFx.classList.remove('show'),800);
     function showLineClearEffect(lines, gained) {
         const names = {1:'SINGLE!',2:'DOUBLE!',3:'TRIPLE!',4:'TETRIS!'};
         lineClearFx.className = 'line-clear-fx ' + ['','one','two','three','four'][lines];
@@ -792,7 +740,7 @@
     function playerHardDrop() {
         while (!collide(board, currentPiece)) { currentPiece.y++; }
         currentPiece.y--; merge(board, currentPiece); playSound('drop'); arenaSweep(); spawnPiece(); 
-
+        
         // 🔒 双保险：直落触发时，不仅重置下落计数，同时刷新时间盾牌
         dropCounter = 0;
         lastHardDropTime = performance.now(); 
@@ -857,7 +805,6 @@
         lastGridX = 0;
         lastGridY = 0;
         isSwipeAction = false;
-        verticalSwipeLocked = false;
         hasHardDroppedThisTouch = false;
         touchPieceSerial = pieceSerial;
     }, { passive: false });
@@ -879,41 +826,28 @@
         const deltaX = touch.clientX - touchStartX;
         const deltaY = touch.clientY - touchStartY;
 
-        /*
-         * 硬降防漂移：
-         * 一旦本次手势明显表现为“向下”，立即锁定为纵向手势。
-         * 旧逻辑要等 deltaY > 80px 才识别硬降，在这之前横向位移
-         * 已经可能触发 playerMove()，于是快速斜向下划时会出现“硬降漂移”。
-         */
-        if (!verticalSwipeLocked &&
-            deltaY > 10 &&
-            deltaY > Math.abs(deltaX) * 1.15) {
-            verticalSwipeLocked = true;
+        // 大幅向下：一次且仅一次硬降
+        if (deltaY > HARD_DROP_MIN_PIXELS &&
+            deltaY > Math.abs(deltaX) * 1.5) {
             isSwipeAction = true;
-        }
-
-        // 纵向手势：完全禁止横向移动，只处理下落/硬降。
-        if (verticalSwipeLocked) {
-            if (deltaY > HARD_DROP_MIN_PIXELS) {
-                hasHardDroppedThisTouch = true;
-                playerHardDrop();
-                return;
-            }
-
-            const currentGridY = Math.trunc(deltaY / SWIPE_THRESHOLD_Y);
-            if (currentGridY > lastGridY) {
-                playerDrop();
-                lastGridY = currentGridY;
-            }
+            hasHardDroppedThisTouch = true;
+            playerHardDrop();
             return;
         }
 
-        // 非纵向手势才允许横向移动。
         const currentGridX = Math.trunc(deltaX / SWIPE_THRESHOLD_X);
+        const currentGridY = Math.trunc(deltaY / SWIPE_THRESHOLD_Y);
+
         if (Math.abs(currentGridX) > Math.abs(lastGridX)) {
             isSwipeAction = true;
             playerMove(currentGridX > lastGridX ? 1 : -1);
             lastGridX = currentGridX;
+        }
+
+        if (currentGridY > lastGridY && deltaY > 0) {
+            isSwipeAction = true;
+            playerDrop();
+            lastGridY = currentGridY;
         }
     }, { passive: false });
 

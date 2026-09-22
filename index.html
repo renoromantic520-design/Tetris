@@ -312,6 +312,16 @@
             .box-val { font-size: 11px; }
         }
     </style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style id="globalLeaderboardStyle">
+#globalLeaderboardPanel{position:fixed;top:8px;right:8px;z-index:9999;width:180px;max-width:45vw;box-sizing:border-box;padding:8px 10px;border-radius:12px;background:rgba(0,0,0,.72);color:#fff;font:13px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);pointer-events:none}
+.global-title{font-weight:700;margin-bottom:4px}
+.global-rank-row{display:grid;grid-template-columns:23px 1fr auto;gap:4px;align-items:center;padding:2px 0;white-space:nowrap}
+.global-rank-row span:nth-child(2){overflow:hidden;text-overflow:ellipsis}
+@media(max-width:600px){#globalLeaderboardPanel{width:160px;max-width:45vw;font-size:11px;padding:7px 8px}}
+</style>
+
 </head>
 <body>
 
@@ -444,7 +454,8 @@
     let touchStartY = 0;
     let lastGridX = 0; 
     let lastGridY = 0; 
-    let isSwipeAction = false; 
+    let isSwipeAction = false;
+let verticalSwipeLocked = false; // 向下手势确认后锁死横向移动 
     
     // 🔒 连落防御核心双锁机制
     let hasHardDroppedThisTouch = false; 
@@ -738,12 +749,20 @@
     }
 
     function playerHardDrop() {
+        // 硬降只改变Y坐标，锁定触发瞬间的X坐标，防止快速下滑产生横向漂移。
+        const lockedX = currentPiece.x;
+
         while (!collide(board, currentPiece)) { currentPiece.y++; }
-        currentPiece.y--; merge(board, currentPiece); playSound('drop'); arenaSweep(); spawnPiece(); 
-        
-        // 🔒 双保险：直落触发时，不仅重置下落计数，同时刷新时间盾牌
+        currentPiece.y--;
+        currentPiece.x = lockedX;
+
+        merge(board, currentPiece);
+        playSound('drop');
+        arenaSweep();
+        spawnPiece();
+
         dropCounter = 0;
-        lastHardDropTime = performance.now(); 
+        lastHardDropTime = performance.now();
     }
 
     function playerMove(dir) {
@@ -805,6 +824,7 @@
         lastGridX = 0;
         lastGridY = 0;
         isSwipeAction = false;
+        verticalSwipeLocked = false;
         hasHardDroppedThisTouch = false;
         touchPieceSerial = pieceSerial;
     }, { passive: false });
@@ -814,7 +834,6 @@
 
         if (e.cancelable) e.preventDefault();
 
-        // 当前触摸已经造成一次硬降，或者已经切换到新方块，旧手势彻底作废。
         if (hasHardDroppedThisTouch ||
             touchPieceSerial !== pieceSerial ||
             performance.now() < inputLockedUntil ||
@@ -825,16 +844,35 @@
         const touch = e.touches[0];
         const deltaX = touch.clientX - touchStartX;
         const deltaY = touch.clientY - touchStartY;
+        const absX = Math.abs(deltaX);
 
-        // 大幅向下：一次且仅一次硬降
-        if (deltaY > HARD_DROP_MIN_PIXELS &&
-            deltaY > Math.abs(deltaX) * 1.5) {
+        // 一旦确认是明显向下手势，本次手势永久锁死横向输入。
+        if (!verticalSwipeLocked &&
+            deltaY > SWIPE_THRESHOLD_Y * 1.5 &&
+            deltaY > absX * 1.15) {
+            verticalSwipeLocked = true;
+        }
+
+        if (verticalSwipeLocked) {
             isSwipeAction = true;
-            hasHardDroppedThisTouch = true;
-            playerHardDrop();
+
+            // 超过硬降阈值：一次且仅一次硬降。
+            if (deltaY > HARD_DROP_MIN_PIXELS) {
+                hasHardDroppedThisTouch = true;
+                playerHardDrop();
+                return;
+            }
+
+            // 未达到硬降阈值，只允许向下加速，不处理横移。
+            const currentGridY = Math.trunc(deltaY / SWIPE_THRESHOLD_Y);
+            if (currentGridY > lastGridY && deltaY > 0) {
+                playerDrop();
+                lastGridY = currentGridY;
+            }
             return;
         }
 
+        // 尚未确认纵向手势时，才允许横向拖拽。
         const currentGridX = Math.trunc(deltaX / SWIPE_THRESHOLD_X);
         const currentGridY = Math.trunc(deltaY / SWIPE_THRESHOLD_Y);
 
@@ -902,5 +940,104 @@
     spawnPiece();
     draw(); 
 </script>
+
+<script id="globalLeaderboardScript">
+const SUPABASE_URL = "https://xoqitfjkvunqxlidqoqe.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_afFJ4ujWJUWASyWtzrNrfg_QIWY4BjA";
+const supabaseClient = window.supabase?.createClient
+    ? window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY)
+    : null;
+
+async function loadGlobalTop10() {
+    if (!supabaseClient) return [];
+    try {
+        const { data, error } = await supabaseClient
+            .from("leaderboard")
+            .select("name,score,created_at")
+            .order("score", { ascending: false })
+            .order("created_at", { ascending: true })
+            .limit(10);
+        if (error) { console.warn("全球榜读取失败", error); return []; }
+        return data || [];
+    } catch (e) { console.warn("全球榜网络异常", e); return []; }
+}
+
+function renderGlobalTop10(rows) {
+    const el = document.getElementById("globalTop10");
+    if (!el) return;
+    if (!rows.length) {
+        el.innerHTML = '<div style="opacity:.7;padding:4px 0">暂无榜单</div>';
+        return;
+    }
+    el.innerHTML = rows.map((r, i) => {
+        const name = String(r.name || "匿名玩家")
+            .replace(/&/g,"&amp;").replace(/</g,"&lt;")
+            .replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+        return `<div class="global-rank-row"><span>${i+1}</span><span>${name}</span><strong>${Number(r.score)||0}</strong></div>`;
+    }).join("");
+}
+
+async function refreshGlobalTop10() {
+    renderGlobalTop10(await loadGlobalTop10());
+}
+
+async function submitGlobalScore(name, score) {
+    if (!supabaseClient || !Number.isFinite(score) || score <= 0) return false;
+    const cleanName = (String(name || "匿名玩家").trim().slice(0, 12) || "匿名玩家");
+    try {
+        const { error } = await supabaseClient
+            .from("leaderboard")
+            .insert([{ name: cleanName, score: Math.floor(score) }]);
+        if (error) { console.warn("全球榜提交失败", error); return false; }
+        return true;
+    } catch (e) { console.warn("全球榜提交异常", e); return false; }
+}
+
+function ensurePlayerName() {
+    let name = localStorage.getItem("tetrisPlayerName");
+    if (name) return name;
+    name = window.prompt("进入全球排行榜，请输入昵称（最多12字）：", "匿名玩家");
+    if (name === null) return null;
+    name = name.trim().slice(0, 12) || "匿名玩家";
+    localStorage.setItem("tetrisPlayerName", name);
+    return name;
+}
+
+let globalScoreSubmitted = false;
+let lastGlobalGameOver = false;
+
+function checkGlobalGameOver() {
+    try {
+        if (typeof gameOver === "undefined") return;
+        if (gameOver && !lastGlobalGameOver && !globalScoreSubmitted) {
+            const scoreValue = Number(window.score);
+            if (Number.isFinite(scoreValue) && scoreValue > 0) {
+                const name = ensurePlayerName();
+                if (name !== null) {
+                    globalScoreSubmitted = true;
+                    submitGlobalScore(name, scoreValue).then(ok => {
+                        if (ok) refreshGlobalTop10();
+                    });
+                }
+            }
+        }
+        if (!gameOver) globalScoreSubmitted = false;
+        lastGlobalGameOver = gameOver;
+    } catch (e) {}
+}
+
+function installGlobalLeaderboardUI() {
+    if (document.getElementById("globalLeaderboardPanel")) return;
+    const panel = document.createElement("div");
+    panel.id = "globalLeaderboardPanel";
+    panel.innerHTML = '<div class="global-title">🌍 全球前十</div><div id="globalTop10">正在加载……</div>';
+    document.body.appendChild(panel);
+    refreshGlobalTop10();
+}
+
+window.addEventListener("load", installGlobalLeaderboardUI);
+setInterval(checkGlobalGameOver, 250);
+</script>
+
 </body>
 </html>
